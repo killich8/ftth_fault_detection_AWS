@@ -1,0 +1,35 @@
+# Configuration file for the FTTH Fault Detection project
+
+# Data configuration
+data:
+  raw_data_path: "data/OTDR_data.csv"
+  processed_data_path: "data/processed/"
+  train_test_split: 0.2
+  validation_split: 0.1
+  random_seed: 42
+
+# Model configuration
+model:
+  model_type: "lstm"  # Options: lstm, cnn, transformer
+  input_features: 31  # SNR + 30 OTDR trace points
+  hidden_layers: [128, 64]
+  dropout_rate: 0.3
+  learning_rate: 0.001
+  batch_size: 64
+  epochs: 50
+  early_stopping_patience: 10
+  model_save_path: "models/"
+
+# API configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  model_path: "models/best_model.pkl"
+  log_level: "info"
+
+# AWS configuration
+aws:
+  region: "us-east-1"
+  s3_bucket: "ftth-fault-detection"
+  ecr_repository: "ftth-fault-detection"
+  instance_type: "ml.m5.xlarge"

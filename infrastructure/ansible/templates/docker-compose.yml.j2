@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  ftth-api:
+    image: {{ ecr_repository_url }}:latest
+    container_name: ftth-api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_ACCESS_KEY_ID={{ aws_access_key }}
+      - AWS_SECRET_ACCESS_KEY={{ aws_secret_key }}
+      - AWS_REGION={{ aws_region }}
+      - S3_BUCKET={{ s3_bucket_name }}
+    volumes:
+      - /opt/ftth-api/logs:/app/logs

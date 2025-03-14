@@ -1,0 +1,27 @@
+name: ftth-fault-detection
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip=22.3
+  - numpy=1.23.5
+  - pandas=1.5.2
+  - scikit-learn=1.2.0
+  - tensorflow=2.10.0
+  - matplotlib=3.6.2
+  - seaborn=0.12.1
+  - jupyter=1.0.0
+  - fastapi=0.88.0
+  - uvicorn=0.20.0
+  - pydantic=1.10.2
+  - pytest=7.2.0
+  - pip:
+    - mlflow==2.1.1
+    - boto3==1.26.27
+    - python-dotenv==0.21.0
+    - pyyaml==6.0
+    - pytest-cov==4.0.0
+    - black==22.12.0
+    - isort==5.11.4
+    - flake8==6.0.0

@@ -1,0 +1,73 @@
+---
+- name: Install dependencies on API server
+  hosts: api_server
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - docker.io
+          - python3-pip
+          - git
+        state: present
+
+    - name: Install Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/1.29.2/docker-compose-Linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install AWS CLI
+      pip:
+        name: awscli
+        state: present
+
+    - name: Configure AWS credentials
+      shell: |
+        aws configure set aws_access_key_id "{{ aws_access_key }}"
+        aws configure set aws_secret_access_key "{{ aws_secret_key }}"
+        aws configure set region "{{ aws_region }}"
+      no_log: true
+      args:
+        executable: /bin/bash
+
+    - name: Login to ECR
+      shell: |
+        aws ecr get-login-password --region {{ aws_region }} | docker login --username AWS --password-stdin {{ ecr_repository_url }}
+      args:
+        executable: /bin/bash
+
+    - name: Pull latest Docker image
+      docker_image:
+        name: "{{ ecr_repository_url }}:latest"
+        source: pull
+        force_source: yes
+
+    - name: Create application directory
+      file:
+        path: /opt/ftth-api
+        state: directory
+        mode: '0755'
+
+    - name: Create Docker Compose file
+      template:
+        src: docker-compose.yml.j2
+        dest: /opt/ftth-api/docker-compose.yml
+        mode: '0644'
+
+    - name: Start application with Docker Compose
+      shell: |
+        cd /opt/ftth-api && docker-compose up -d
+      args:
+        executable: /bin/bash
