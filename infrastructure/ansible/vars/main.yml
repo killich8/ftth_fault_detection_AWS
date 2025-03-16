@@ -1,0 +1,32 @@
+---
+# Main variables for Ansible playbooks
+
+# AWS Configuration
+aws_region: "{{ lookup('env', 'AWS_REGION') | default('us-east-1', true) }}"
+s3_bucket_name: "{{ lookup('env', 'S3_BUCKET_NAME') }}"
+ecr_repository_url: "{{ lookup('env', 'ECR_REPOSITORY_URL') }}"
+
+# Docker Configuration
+docker_compose_version: "1.29.2"
+
+# API Configuration
+api_port: 8000
+api_container_name: "ftth-api"
+api_image_tag: "latest"
+api_log_level: "info"
+
+# Jenkins Configuration
+jenkins_http_port: 8080
+jenkins_home: "/var/lib/jenkins"
+jenkins_admin_username: "admin"
+# Note: In production, use Ansible Vault for sensitive information
+jenkins_admin_password: "{{ lookup('env', 'JENKINS_ADMIN_PASSWORD') | default('changeme', true) }}"
+
+# Training Configuration
+training_data_dir: "/opt/ftth/data"
+training_model_dir: "/opt/ftth/models"
+training_log_dir: "/opt/ftth/logs"
+
+# Common paths
+app_base_dir: "/opt/ftth"
+log_dir: "/var/log/ftth"

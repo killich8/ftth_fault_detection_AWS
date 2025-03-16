@@ -1,0 +1,32 @@
+# Data configuration
+data:
+  raw_data_path: "{{ training_data_dir }}/OTDR_data.csv"
+  processed_data_path: "{{ training_data_dir }}/processed/"
+  train_test_split: 0.2
+  validation_split: 0.1
+  random_seed: 42
+
+# Model configuration
+model:
+  model_type: "{{ model_type | default('lstm') }}"
+  input_features: 31
+  hidden_layers: [128, 64]
+  dropout_rate: 0.3
+  learning_rate: 0.001
+  batch_size: 64
+  epochs: 50
+  early_stopping_patience: 10
+  model_save_path: "{{ training_model_dir }}/"
+
+# API configuration
+api:
+  host: "0.0.0.0"
+  port: {{ api_port }}
+  model_path: "{{ training_model_dir }}/best_model.pkl"
+  log_level: "{{ api_log_level }}"
+
+# AWS configuration
+aws:
+  region: "{{ aws_region }}"
+  s3_bucket: "{{ s3_bucket_name }}"
+  ecr_repository: "{{ ecr_repository_url }}"

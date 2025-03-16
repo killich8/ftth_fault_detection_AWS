@@ -1,0 +1,37 @@
+#!/bin/bash
+# Training script for FTTH Fault Detection model
+
+set -e
+
+# Set environment variables
+export PYTHONPATH={{ app_base_dir }}
+export AWS_REGION={{ aws_region }}
+export S3_BUCKET_NAME={{ s3_bucket_name }}
+
+# Create directories if they don't exist
+mkdir -p {{ training_data_dir }}/processed
+mkdir -p {{ training_model_dir }}
+mkdir -p {{ training_log_dir }}
+
+# Log start of training
+echo "$(date): Starting model training" >> {{ training_log_dir }}/training.log
+
+# Run data preprocessing
+echo "$(date): Running data preprocessing" >> {{ training_log_dir }}/training.log
+python3 {{ app_base_dir }}/train.py --preprocess-only
+
+# Run model training
+echo "$(date): Running model training" >> {{ training_log_dir }}/training.log
+python3 {{ app_base_dir }}/train.py
+
+# Run model evaluation
+echo "$(date): Running model evaluation" >> {{ training_log_dir }}/training.log
+python3 {{ app_base_dir }}/evaluate.py
+
+# Upload model to S3
+echo "$(date): Uploading model to S3" >> {{ training_log_dir }}/training.log
+aws s3 cp {{ training_model_dir }}/best_model.pkl s3://{{ s3_bucket_name }}/models/best_model.pkl
+aws s3 cp {{ training_model_dir }}/best_model.h5 s3://{{ s3_bucket_name }}/models/best_model.h5
+
+# Log completion
+echo "$(date): Model training completed successfully" >> {{ training_log_dir }}/training.log

@@ -1,0 +1,119 @@
+---
+- name: Add Jenkins repository key
+  apt_key:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Add Jenkins repository
+  apt_repository:
+    repo: deb https://pkg.jenkins.io/debian-stable binary/
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install Java
+  apt:
+    name: openjdk-11-jdk
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Create Jenkins directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+  loop:
+    - "{{ jenkins_home }}/jobs"
+    - "{{ jenkins_home }}/plugins"
+    - "{{ jenkins_home }}/users"
+
+- name: Configure Jenkins
+  template:
+    src: jenkins.j2
+    dest: /etc/default/jenkins
+    mode: '0644'
+  notify: Restart Jenkins
+
+- name: Start and enable Jenkins service
+  service:
+    name: jenkins
+    state: started
+    enabled: yes
+
+- name: Wait for Jenkins to start up
+  uri:
+    url: http://localhost:{{ jenkins_http_port }}/login
+    status_code: 200
+    timeout: 5
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 5
+
+- name: Get Jenkins initial admin password
+  slurp:
+    src: "{{ jenkins_home }}/secrets/initialAdminPassword"
+  register: jenkins_admin_password_file
+  ignore_errors: yes
+
+- name: Set fact for Jenkins admin password
+  set_fact:
+    jenkins_initial_admin_password: "{{ jenkins_admin_password_file['content'] | b64decode | trim }}"
+  when: jenkins_admin_password_file is succeeded
+
+- name: Install Jenkins plugins
+  jenkins_plugin:
+    name: "{{ item }}"
+    url: http://localhost:{{ jenkins_http_port }}
+    timeout: 120
+    with_dependencies: yes
+  loop:
+    - git
+    - pipeline
+    - workflow-aggregator
+    - docker-workflow
+    - credentials-binding
+    - aws-credentials
+    - terraform
+    - ansible
+    - blueocean
+  ignore_errors: yes
+
+- name: Create Jenkins job directories
+  file:
+    path: "{{ jenkins_home }}/jobs/{{ item }}"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+  loop:
+    - ftth-model-training
+    - ftth-api-deployment
+
+- name: Configure Jenkins jobs
+  template:
+    src: "{{ item }}.xml.j2"
+    dest: "{{ jenkins_home }}/jobs/{{ item }}/config.xml"
+    owner: jenkins
+    group: jenkins
+    mode: '0644'
+  loop:
+    - ftth-model-training
+    - ftth-api-deployment
+  notify: Restart Jenkins
+
+- name: Add Jenkins user to Docker group
+  user:
+    name: jenkins
+    groups: docker
+    append: yes
+  notify: Restart Jenkins

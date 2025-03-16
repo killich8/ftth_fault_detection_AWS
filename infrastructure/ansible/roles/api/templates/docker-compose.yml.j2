@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  {{ api_container_name }}:
+    image: {{ ecr_repository_url }}:{{ api_image_tag }}
+    container_name: {{ api_container_name }}
+    restart: always
+    ports:
+      - "{{ api_port }}:{{ api_port }}"
+    environment:
+      - AWS_REGION={{ aws_region }}
+      - S3_BUCKET_NAME={{ s3_bucket_name }}
+      - LOG_LEVEL={{ api_log_level }}
+    volumes:
+      - {{ app_base_dir }}/models:/app/models
+      - {{ app_base_dir }}/logs:/app/logs
+      - {{ app_base_dir }}/config.yaml:/app/config.yaml
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:{{ api_port }}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

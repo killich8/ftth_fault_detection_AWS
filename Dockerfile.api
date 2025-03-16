@@ -1,0 +1,37 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy configuration
+COPY config.yaml .
+
+# Copy source code
+COPY src/api /app/api
+COPY src/model /app/model
+
+# Create necessary directories
+RUN mkdir -p logs models
+
+# Copy pre-trained model (if available)
+# If not available, this will be mounted as a volume or downloaded at runtime
+COPY models/best_model.h5 /app/models/ || true
+COPY models/best_model.pkl /app/models/ || true
+
+# Expose API port
+EXPOSE 8000
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV MODEL_PATH=/app/models/best_model.h5
+
+# Create a non-root user and switch to it
+RUN adduser --disabled-password --gecos '' api-user
+RUN chown -R api-user:api-user /app
+USER api-user
+
+# Run the application
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]

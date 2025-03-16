@@ -1,0 +1,46 @@
+---
+- name: Create common directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ app_base_dir }}"
+    - "{{ log_dir }}"
+
+- name: Install common Python packages
+  pip:
+    name:
+      - boto3
+      - pyyaml
+      - requests
+    state: present
+
+- name: Set up system timezone
+  timezone:
+    name: UTC
+
+- name: Configure hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Create ftth system user
+  user:
+    name: ftth
+    shell: /bin/bash
+    system: yes
+    create_home: yes
+    home: /home/ftth
+
+- name: Set up log rotation
+  template:
+    src: logrotate.j2
+    dest: /etc/logrotate.d/ftth
+    mode: '0644'
+
+- name: Set up environment variables
+  template:
+    src: environment.j2
+    dest: /etc/environment
+    mode: '0644'
+    backup: yes

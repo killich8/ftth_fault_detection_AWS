@@ -1,0 +1,77 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS CloudFormation Template for FTTH Fault Detection Jenkins",
+  "Parameters": {
+    "KeyName": {
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+    },
+    "InstanceType": {
+      "Description": "EC2 instance type",
+      "Type": "String",
+      "Default": "t3.medium",
+      "AllowedValues": ["t3.small", "t3.medium", "t3.large", "m5.large"],
+      "ConstraintDescription": "must be a valid EC2 instance type."
+    }
+  },
+  "Resources": {
+    "JenkinsInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "InstanceType": { "Ref": "InstanceType" },
+        "SecurityGroups": [ { "Ref": "JenkinsSecurityGroup" } ],
+        "KeyName": { "Ref": "KeyName" },
+        "ImageId": "ami-0c55b159cbfafe1f0",
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": ["", [
+              "#!/bin/bash -xe\n",
+              "apt-get update\n",
+              "apt-get install -y openjdk-11-jdk\n",
+              "wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | apt-key add -\n",
+              "sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'\n",
+              "apt-get update\n",
+              "apt-get install -y jenkins\n",
+              "systemctl start jenkins\n",
+              "systemctl enable jenkins\n"
+            ]]
+          }
+        },
+        "Tags": [
+          { "Key": "Name", "Value": "Jenkins Server" }
+        ]
+      }
+    },
+    "JenkinsSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable SSH and Jenkins ports",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "8080",
+            "ToPort": "8080",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "JenkinsURL": {
+      "Description": "URL for Jenkins",
+      "Value": { "Fn::Join": ["", ["http://", { "Fn::GetAtt": ["JenkinsInstance", "PublicDnsName"] }, ":8080"]] }
+    },
+    "JenkinsPublicIP": {
+      "Description": "Public IP address of Jenkins server",
+      "Value": { "Fn::GetAtt": ["JenkinsInstance", "PublicIp"] }
+    }
+  }
+}

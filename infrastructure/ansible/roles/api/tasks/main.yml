@@ -1,0 +1,77 @@
+---
+- name: Create API directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ app_base_dir }}/api"
+    - "{{ app_base_dir }}/models"
+    - "{{ app_base_dir }}/logs"
+
+- name: Pull API Docker image
+  docker_image:
+    name: "{{ ecr_repository_url }}:{{ api_image_tag }}"
+    source: pull
+    force_source: yes
+  register: docker_pull_result
+  ignore_errors: yes
+
+- name: Create Docker Compose file for API
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ app_base_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Create API configuration file
+  template:
+    src: config.yaml.j2
+    dest: "{{ app_base_dir }}/config.yaml"
+    mode: '0644'
+
+- name: Download model from S3
+  command: >
+    aws s3 cp s3://{{ s3_bucket_name }}/models/best_model.pkl {{ app_base_dir }}/models/best_model.pkl
+  args:
+    creates: "{{ app_base_dir }}/models/best_model.pkl"
+  ignore_errors: yes
+
+- name: Create API systemd service
+  template:
+    src: ftth-api.service.j2
+    dest: /etc/systemd/system/ftth-api.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Start and enable API service
+  systemd:
+    name: ftth-api
+    state: started
+    enabled: yes
+  ignore_errors: yes
+
+- name: Set up Nginx as reverse proxy
+  apt:
+    name: nginx
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Configure Nginx for API
+  template:
+    src: nginx-api.conf.j2
+    dest: /etc/nginx/sites-available/ftth-api
+    mode: '0644'
+  notify: Restart Nginx
+
+- name: Enable Nginx site
+  file:
+    src: /etc/nginx/sites-available/ftth-api
+    dest: /etc/nginx/sites-enabled/ftth-api
+    state: link
+  notify: Restart Nginx
+
+- name: Start and enable Nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes

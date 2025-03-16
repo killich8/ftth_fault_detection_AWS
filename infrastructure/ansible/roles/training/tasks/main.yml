@@ -1,0 +1,56 @@
+---
+- name: Create training directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ training_data_dir }}"
+    - "{{ training_model_dir }}"
+    - "{{ training_log_dir }}"
+
+- name: Install training dependencies
+  pip:
+    name:
+      - tensorflow
+      - numpy
+      - pandas
+      - scikit-learn
+      - matplotlib
+      - seaborn
+      - boto3
+      - pyyaml
+    state: present
+
+- name: Download OTDR dataset from S3
+  command: >
+    aws s3 cp s3://{{ s3_bucket_name }}/data/OTDR_data.csv {{ training_data_dir }}/OTDR_data.csv
+  args:
+    creates: "{{ training_data_dir }}/OTDR_data.csv"
+  ignore_errors: yes
+
+- name: Copy training scripts
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ app_base_dir }}/{{ item }}"
+    mode: '0755'
+  loop:
+    - train.py
+    - evaluate.py
+    - train.sh
+
+- name: Create training configuration file
+  template:
+    src: training_config.yaml.j2
+    dest: "{{ app_base_dir }}/config.yaml"
+    mode: '0644'
+
+- name: Set up cron job for model retraining
+  cron:
+    name: "FTTH model retraining"
+    user: ftth
+    job: "cd {{ app_base_dir }} && ./train.sh >> {{ training_log_dir }}/training.log 2>&1"
+    hour: "2"
+    minute: "0"
+    weekday: "0"
+    state: present

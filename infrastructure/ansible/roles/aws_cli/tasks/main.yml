@@ -1,0 +1,76 @@
+---
+- name: Install AWS CLI dependencies
+  apt:
+    name:
+      - python3-pip
+      - unzip
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Download AWS CLI installer
+  get_url:
+    url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+    dest: /tmp/awscliv2.zip
+    mode: '0644'
+
+- name: Create AWS CLI directory
+  file:
+    path: /tmp/aws-cli
+    state: directory
+    mode: '0755'
+
+- name: Extract AWS CLI installer
+  unarchive:
+    src: /tmp/awscliv2.zip
+    dest: /tmp/aws-cli
+    remote_src: yes
+
+- name: Install AWS CLI
+  command: /tmp/aws-cli/aws/install
+  args:
+    creates: /usr/local/bin/aws
+
+- name: Configure AWS CLI
+  template:
+    src: aws_config.j2
+    dest: /home/{{ item }}/.aws/config
+    mode: '0600'
+    owner: "{{ item }}"
+    group: "{{ item }}"
+  loop:
+    - "{{ ansible_user }}"
+    - ftth
+  ignore_errors: yes
+
+- name: Create AWS credentials directory
+  file:
+    path: /home/{{ item }}/.aws
+    state: directory
+    mode: '0700'
+    owner: "{{ item }}"
+    group: "{{ item }}"
+  loop:
+    - "{{ ansible_user }}"
+    - ftth
+  ignore_errors: yes
+
+- name: Configure AWS credentials
+  template:
+    src: aws_credentials.j2
+    dest: /home/{{ item }}/.aws/credentials
+    mode: '0600'
+    owner: "{{ item }}"
+    group: "{{ item }}"
+  loop:
+    - "{{ ansible_user }}"
+    - ftth
+  ignore_errors: yes
+  no_log: true
+
+- name: Clean up AWS CLI installer
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/awscliv2.zip
+    - /tmp/aws-cli
